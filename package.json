@@ -1,0 +1,32 @@
+{
+  "name": "TTracker",
+  "version": "0.0.0",
+  "description": "A proof of concept for using Node, ElasticSearch and Trello together to report on project progress",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shaunmccarthy/TTracker.git"
+  },
+  "keywords": [
+    "Trello",
+    "Node",
+    "ElasticSearch",
+    "ProjectManagement"
+  ],
+  "author": "Shaun McCarthy (http://www.shaunmccarthy.com)",
+  "license": "None",
+  "bugs": {
+    "url": "https://github.com/shaunmccarthy/TTracker/issues"
+  },
+  "homepage": "https://github.com/shaunmccarthy/TTracker",
+  "dependencies": {
+    "elasticsearch": "~1.3.0",
+    "grunt": "~0.4.2",
+    "node-trello": "~0.1.4",
+    "nconf": "~0.6.9",
+    "express": "~3.4.8"
+  }
+}
