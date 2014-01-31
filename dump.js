@@ -55,6 +55,29 @@ function estimatesByQueries(queries, callback) {
     return when.all(promises);
 }
 
+function estimatesByQueriesFast(queries, callback) {
+    var estimates = [];
+    var processed = 0;
+    var promises = queries.map(function(query) {
+
+        var estimate = {};
+        estimate.name = query.name;
+        estimates[estimates.length] = estimate;
+
+        return es.search({
+            index: nconf.get('elastic.index'),
+            q: query.query, 
+            size:10000,
+            fields: ["estimate", "statusID"]
+        }).then(function (res) {
+            summarizeEstimates(res, estimate);
+            return estimate;
+        });
+    });
+
+    return when.all(promises);
+}
+
 function estimatesByStatus(callback) {
     return when.promise( function (resolve, reject) {
         trello.get("/1/boards/"+ nconf.get("board_id") + "/lists", function (err, data) {
@@ -74,7 +97,7 @@ function estimatesByLabels(callback) {
         });
     })
     .then(createLabelQueries)
-    .then(estimatesByQueries)
+    .then(estimatesByQueriesFast)
     .then(printEstimate)
     .catch(function(e) { console.log('Error: ' + e) });
 }
@@ -96,5 +119,41 @@ function createLabelQueries(data) {
     return u.properties(data.labelNames).map(function(label) { return {query : '+colors:' + label, name : data.labelNames[label]} });
 }
 
-var tasks = [estimatesByLabels(), estimatesByStatus()];
-when.all(tasks).then(process.exit);
+//estimatesByLabels().then(process.exit);
+//var tasks = [estimatesByLabels(), estimatesByStatus()];
+//when.all(tasks).then(process.exit);
+
+
+function estimate() {
+    console.log('ts');
+    return es.search({
+        index: nconf.get('elastic.index'),
+        body: {
+    "query" : {
+        "match_all" : {  }
+    },
+    "facets" : {
+        "tag_price_stats" : {
+            "terms_stats" : {
+                "key_field" : "list",
+                "value_field" : "estimate"
+            }
+        }
+    }
+},
+        size:0,
+        fields: ["estimate", "statusID"]
+    })
+/*
+    .then(function (res) {
+        return { total: res.facets.stats.total, count: res.facets.stats.count }
+    })*/
+}
+
+console.log('a');
+when(estimate())
+.then(function (res) {
+    console.log(u.debug(res));
+})
+.then(process.exit)
+.catch(function(err) {console.log(err) });
