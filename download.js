@@ -5,6 +5,7 @@ var utils = require('./utils.js');
 var Trello = require('node-trello');
 var ElasticSearch = require('elasticsearch');
 var nconf = require('./config.js');
+var when = require('when');
 
 var trello = new Trello(nconf.get('public_key'), nconf.get('token'));
 var es = new ElasticSearch.Client();
@@ -20,7 +21,7 @@ function getEstimate(title) {
     }
 }
 
-function saveCards(cards, callback) {
+function saveCards(cards) {
     var toSave = cards.length;
     var saved = 0;
     console.log("Saving " + toSave + " cards");
@@ -28,7 +29,7 @@ function saveCards(cards, callback) {
     
     // Now save the cards to elastic search
     // TODO: Batch
-    cards.map(function (c) {
+    var promises = cards.map(function (c) {
         var doc = {
             index: nconf.get('elastic.index'),
             type: nconf.get('elastic.type'),
@@ -36,22 +37,16 @@ function saveCards(cards, callback) {
             body: c   
         };
         
-        es.index(doc, function (err, resp) {
-            if (err != undefined) {
-                console.log("Unable to save card " + c.id + " due to " + err);
-            }
-            else {
-                console.log("Saved " + c.id);
-            }
-            saved++;
-            if (saved >= toSave) {
-                callback();
-            }
-        });
+        return es.index(doc).then(function(res)
+                                  {
+                                    console.log("Saved " + c.id)
+                                  });
     });
+
+    return when.all(promises);
 }
 
-function getCards(trello, callback) {
+function getCards(trello) {
     var cards = [];
     // Lowercase the config / trim it
     var fields = nconf.get("fields").map(function (str) {return str.toLowerCase().trim() });
@@ -64,7 +59,12 @@ function getCards(trello, callback) {
     var date = utils.dateStamp();
 
     // get all the cards for the board
-    trello.get("/1/boards/"+ nconf.get("board_id") + "/lists?cards=open&card_fields=" + fields.join(',') + "&labels=true", function(err, data) {
+    return when.promise(function (resolve, reject) {
+        trello.get("/1/boards/"+ nconf.get("board_id") + "/lists?cards=open&card_fields=" + fields.join(',') + "&labels=true", function(err, data) {
+            (err != undefined) ? reject(err) : resolve(data);
+        })
+    })
+    .then(function(data) {
         var result = data.map(function(l) {
             var list = l.name;
             var listID = l.id;
@@ -88,13 +88,11 @@ function getCards(trello, callback) {
                 cards[cards.length] = c;
             });
         });
-        if (callback !== undefined) {
-            callback(cards, callback);
-        }
+        return cards;
     });
 }
 
 
-getCards(trello, function(cards) {
-    saveCards(cards, process.exit);
-});
+getCards(trello)
+.then(saveCards)
+.then(process.exit);

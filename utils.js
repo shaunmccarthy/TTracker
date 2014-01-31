@@ -11,5 +11,17 @@ function dateStamp() {
 function isNumber(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
+
+function debug(obj) {
+    return JSON.stringify(obj);
+}
+
+function properties(obj) {
+    return Object.keys(obj);
+}
+
+
 exports.dateStamp = dateStamp;
 exports.isNumber = isNumber;
+exports.properties = properties;
+exports.debug = debug;

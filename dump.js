@@ -2,72 +2,99 @@
 
 var Trello = require('node-trello');
 var ElasticSearch = require('elasticsearch');
-var utils = require('./utils.js');
+var u = require('./utils.js');
 var nconf = require('./config.js');
+var when = require('when');
+var callbacks = require('when/callbacks');
 
 var es = new ElasticSearch.Client();
 var trello = new Trello(nconf.get('public_key'), nconf.get('token'));
 
-function debug(obj) {
-    return JSON.stringify(obj);
-}
-
-function properties(obj) {
-    return Object.keys(obj);
-}
-
-// check to see if we were passed in a date via the command line
-// otherwise, default to today
-
-var dateStamp = nconf.get('date');
-if (dateStamp == undefined) {
-    dateStamp = utils.dateStamp();
-}
-
-trello.get("/1/boards/"+ nconf.get("board_id") + "/lists", function (err, data) {
-    var result = data.map(function(list) {
-        estimateList(list, printEstimate);
-    });
-});
-
 // Consider http://stackoverflow.com/questions/16045165/sum-query-in-elasticsearch
+function summarizeEstimates(res, estimate) {
+    var cards = res.hits.total;
 
-function estimateList(list, callback) {
-    es.search({
-        index: nconf.get('elastic.index'),
-        q: '+reportDate:' + dateStamp + ' +listID:' + list.id, // + ' +colors:orange',
-        size:10000,
-        fields: ["estimate", "statusID"]
-    }, function (err, res) {
-        // console.log(debug(res));
-        var cards = res.hits.total;
+    var estimates = res.hits.hits.map(function (i) {
+        if (i.fields != undefined && i.fields.estimate != undefined && u.isNumber(i.fields.estimate))
+            return parseFloat(i.fields.estimate);
+        else
+            return undefined;
+    });
+    var haveEstimates = estimates.filter(function(i) { return (i != undefined)});
+    var missing = cards - haveEstimates.length;
+    
+    var total = haveEstimates.reduce(function(a, b) {
+        return a + b;
+    }, 0);
+    
+    estimate.cards = cards;
+    estimate.missing = missing;
+    estimate.total = total;
+}
 
-        var estimates = res.hits.hits.map(function (i) {
-            if (i.fields != undefined && i.fields.estimate != undefined && utils.isNumber(i.fields.estimate))
-                return parseFloat(i.fields.estimate);
-            else
-                return undefined;
+function estimatesByQueries(queries, callback) {
+    var estimates = [];
+    var processed = 0;
+    var promises = queries.map(function(query) {
+
+        var estimate = {};
+        estimate.name = query.name;
+        estimates[estimates.length] = estimate;
+
+        return es.search({
+            index: nconf.get('elastic.index'),
+            q: query.query, 
+            size:10000,
+            fields: ["estimate", "statusID"]
+        }).then(function (res) {
+            summarizeEstimates(res, estimate);
+            return estimate;
         });
-        var haveEstimates = estimates.filter(function(i) { return (i != undefined)});
-        var missing = cards - haveEstimates.length;
-        
-        var total = haveEstimates.reduce(function(a, b) {
-            return a + b;
+    });
+
+    return when.all(promises);
+}
+
+function estimatesByStatus(callback) {
+    return when.promise( function (resolve, reject) {
+        trello.get("/1/boards/"+ nconf.get("board_id") + "/lists", function (err, data) {
+            (err != undefined) ? reject(err) : resolve(data);
         });
-        
-        var estimate = {
-            cards: cards,
-            missing: missing,
-            total: total
-        };
-        
-        callback(list, estimate);
+    })
+    .then(createListQueries)
+    .then(estimatesByQueries)
+    .then(printEstimate)
+    .catch(function(e) { console.log('Error: ' + e) });
+}
+
+function estimatesByLabels(callback) {
+    return when.promise(function (resolve, reject) {
+        trello.get("/1/boards/"+ nconf.get("board_id") + "/?fields=labelNames", function (err, data) {
+            (err != undefined) ? reject(err) : resolve(data);
+        });
+    })
+    .then(createLabelQueries)
+    .then(estimatesByQueries)
+    .then(printEstimate)
+    .catch(function(e) { console.log('Error: ' + e) });
+}
+
+function printEstimate(estimates) {
+    estimates.forEach(function (estimate) {
+        console.log("[" + estimate.name + "]");
+        console.log("\tCards: " + estimate.cards);
+        console.log("\tEstimate: " + estimate.total);
+        console.log("\tNo Estimates: " + estimate.missing);
     });
 }
 
-function printEstimate(list, estimate) {
-    console.log("[" + list.name + "]");
-    console.log("\tCards: " + estimate.cards);
-    console.log("\tEstimate: " + estimate.total);
-    console.log("\tNo Estimates: " + estimate.missing);
+function createListQueries(data) {
+    return data.map(function(list) { return {query : '+listID:' + list.id, name : list.name} });
 }
+
+function createLabelQueries(data) {
+    return u.properties(data.labelNames).map(function(label) { return {query : '+colors:' + label, name : data.labelNames[label]} });
+}
+
+var tasks = [estimatesByLabels(), estimatesByStatus()];
+when.all(tasks).then(process.exit);
