@@ -20,7 +20,7 @@ function summarizeEstimates(res, estimate) {
         else
             return undefined;
     });
-    var haveEstimates = estimates.filter(function(i) { return (i != undefined)});
+    var haveEstimates = estimates.filter(function(i) { return (i != undefined);});
     var missing = cards - haveEstimates.length;
     
     var total = haveEstimates.reduce(function(a, b) {
@@ -34,30 +34,6 @@ function summarizeEstimates(res, estimate) {
 
 function estimatesByQueries(queries, callback) {
     var estimates = [];
-    var processed = 0;
-    var promises = queries.map(function(query) {
-
-        var estimate = {};
-        estimate.name = query.name;
-        estimates[estimates.length] = estimate;
-
-        return es.search({
-            index: nconf.get('elastic.index'),
-            q: query.query, 
-            size:10000,
-            fields: ["estimate", "statusID"]
-        }).then(function (res) {
-            summarizeEstimates(res, estimate);
-            return estimate;
-        });
-    });
-
-    return when.all(promises);
-}
-
-function estimatesByQueriesFast(queries, callback) {
-    var estimates = [];
-    var processed = 0;
     var promises = queries.map(function(query) {
 
         var estimate = {};
@@ -97,7 +73,7 @@ function estimatesByLabels(callback) {
         });
     })
     .then(createLabelQueries)
-    .then(estimatesByQueriesFast)
+    .then(estimatesByQueries)
     .then(printEstimate)
     .catch(function(e) { console.log('Error: ' + e) });
 }
@@ -112,11 +88,11 @@ function printEstimate(estimates) {
 }
 
 function createListQueries(data) {
-    return data.map(function(list) { return {query : '+listID:' + list.id, name : list.name} });
+    return data.map(function(list) { return {query : '+listID:' + list.id, name : list.name}; });
 }
 
 function createLabelQueries(data) {
-    return u.properties(data.labelNames).map(function(label) { return {query : '+colors:' + label, name : data.labelNames[label]} });
+    return u.properties(data.labelNames).map(function(label) { return {query : '+colors:' + label, name : data.labelNames[label]}; });
 }
 
 //estimatesByLabels().then(process.exit);
@@ -129,31 +105,30 @@ function estimate() {
     return es.search({
         index: nconf.get('elastic.index'),
         body: {
-    "query" : {
-        "match_all" : {  }
-    },
-    "facets" : {
-        "tag_price_stats" : {
-            "terms_stats" : {
-                "key_field" : "list",
-                "value_field" : "estimate"
-            }
-        }
-    }
-},
+        	"query" : {
+        		"match_all" : {  }
+        	},
+        	"facets" : {
+        		"tag_price_stats" : {
+        			"terms_stats" : {
+        				"key_field" : "list",
+        				"value_field" : "estimate"
+        			}
+        		}
+        	}
+        },
         size:0,
         fields: ["estimate", "statusID"]
-    })
+    });
 /*
     .then(function (res) {
         return { total: res.facets.stats.total, count: res.facets.stats.count }
     })*/
 }
 
-console.log('a');
 when(estimate())
 .then(function (res) {
     console.log(u.debug(res));
 })
 .then(process.exit)
-.catch(function(err) {console.log(err) });
+.catch(function(err) {console.log(err); });

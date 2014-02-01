@@ -23,7 +23,6 @@ function getEstimate(title) {
 
 function saveCards(cards) {
     var toSave = cards.length;
-    var saved = 0;
     console.log("Saving " + toSave + " cards");
     
     
@@ -39,7 +38,7 @@ function saveCards(cards) {
         
         return es.index(doc).then(function(res)
                                   {
-                                    console.log("Saved " + c.id)
+                                    console.log("Saved " + c.id);
                                   });
     });
 
@@ -49,7 +48,7 @@ function saveCards(cards) {
 function getCards(trello) {
     var cards = [];
     // Lowercase the config / trim it
-    var fields = nconf.get("fields").map(function (str) {return str.toLowerCase().trim() });
+    var fields = nconf.get("fields").map(function (str) {return str.toLowerCase().trim(); });
     
     // Make sure name is in there, since we'll need it for estimates
     if (fields.indexOf("name") === -1) {
@@ -62,10 +61,12 @@ function getCards(trello) {
     return when.promise(function (resolve, reject) {
         trello.get("/1/boards/"+ nconf.get("board_id") + "/lists?cards=open&card_fields=" + fields.join(',') + "&labels=true", function(err, data) {
             (err != undefined) ? reject(err) : resolve(data);
-        })
+        });
     })
     .then(function(data) {
-        var result = data.map(function(l) {
+    	// Add some more detail to the card objects
+    	// Namely - colors, estimates, and labels
+        data.map(function(l) {
             var list = l.name;
             var listID = l.id;
             l.cards.map( function(c) {
@@ -92,7 +93,7 @@ function getCards(trello) {
     });
 }
 
-
+console.log("Start");
 getCards(trello)
 .then(saveCards)
 .then(process.exit);

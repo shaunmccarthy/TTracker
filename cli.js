@@ -10,7 +10,7 @@ var when = require('when');
 function printIndexList() {
     return es.indices.getAliases({}).then(function(data) {
         console.log("Found Indices:");
-        console.log(u.properties(data).map(function(i) {return "\t" + i}).join("\n"));
+        console.log(u.properties(data).map(function(i) {return "\t" + i;}).join("\n"));
     });
 }
 
@@ -21,7 +21,7 @@ function getBoardList(callback) {
         });
     }).then(function (data) {
         console.log("Boards:");
-        console.log(data.map(function(b) { return "\t[" + b.name + "]: " + b.id}).join("\n"));
+        console.log(data.map(function(b) { return "\t[" + b.name + "]: " + b.id;}).join("\n"));
     });
 }
 
@@ -36,16 +36,14 @@ if (nconf.get('listBoards')) {
     promise = getBoardList();
 }
 else if (nconf.get('listIndices')) {
-    promise = when(printIndexList())
+    promise = when(printIndexList());
 }
 else if (nconf.get('deleteIndex') != undefined) {
-    promise = when(deleteIndex(nconf.get('deleteIndex')))
+    promise = when(deleteIndex(nconf.get('deleteIndex')));
 }
 else {
     console.log("Unrecognized action.\n\nValid actions:\n\tlistIndices\n\tdeleteIndex\n\tlistBoards");
     process.exit();
-}
+};
 
-promise
-.catch(function(e){console.log("Error: " + e)})
-.then(process.exit)
+promise.catch(function(e){console.log("Error: " + e);}).then(function(data) {})
