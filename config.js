@@ -4,22 +4,22 @@ var Trello = require('node-trello');
 nconf.argv().file({file: 'config.json'});
 
 nconf.defaults({
-    "fields" : ["labels", "desc"],
-    "elastic.index": "trello",
-    "elastic.type": "card"
+	"fields" : ["labels", "desc"],
+	"elastic.index": "trello",
+	"elastic.type": "card"
 });
 
 function validate(key, message) {
-    var value = nconf.get(key);
-    if (value == undefined || value.trim() == "") {
-        if (message == undefined) {
-            return false;
-        }
-        else {
-            throw new Error(message);
-        }
-    }
-    return true;
+	var value = nconf.get(key);
+	if (value === undefined || value.trim() === "") {
+		if (message === undefined) {
+			return false;
+		}
+		else {
+			throw new Error(message);
+		}
+	}
+	return true;
 }
 
 validate("public_key", "You need to provide a [public_key] in your config.json file from https://trello.com/1/appKey/generate");
