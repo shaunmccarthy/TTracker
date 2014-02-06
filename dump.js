@@ -1,3 +1,6 @@
+// Useful:
+// http://localhost:9200/test_index/card/_mapping
+
 // node dump.js --date 01/30/2014
 
 var Trello = require('node-trello');
@@ -6,9 +9,24 @@ var u = require('./utils.js');
 var nconf = require('./config.js');
 var when = require('when');
 var callbacks = require('when/callbacks');
+require("colors");
 
 var es = new ElasticSearch.Client();
 var trello = new Trello(nconf.get('public_key'), nconf.get('token'));
+
+function dumpFirstCard() {
+	return es.search({
+		index: nconf.get('elastic.index'),
+		q: "*", 
+		size:10000
+	}).then(function (res) {
+		console.log(res.hits.hits[0]._source);
+	});
+}
+
+function dumpAllCards() {
+	
+}
 
 // Consider http://stackoverflow.com/questions/16045165/sum-query-in-elasticsearch
 function summarizeEstimates(res, estimate) {
@@ -101,7 +119,6 @@ function createLabelQueries(data) {
 
 
 function estimate() {
-	console.log('ts');
 	return es.search({
 		index: nconf.get('elastic.index'),
 			body: {
@@ -130,5 +147,5 @@ when(estimate())
 .then(function (res) {
 	console.log(u.debug(res));
 })
-.then(process.exit)
-.catch(function(err) {console.log(err); });
+.then(function(data) {setTimeout(process.exit,100);})
+.catch(function(err) {console.log("Error: ".red + err); process.exit(); });

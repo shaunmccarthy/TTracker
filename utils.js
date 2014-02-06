@@ -1,12 +1,17 @@
-function dateStamp() {
-	var today = new Date();
-	var dd = today.getDate();
-	var mm = today.getMonth()+1; //January is 0!
-	var yyyy = today.getFullYear();
+function dateAsStr(date) {
+	date = date || new Date();
+	var dd = date.getDate();
+	var mm = date.getMonth()+1; //January is 0!
+	var yyyy = date.getFullYear();
 	if (dd<10) {dd='0'+dd;}
 	if (mm<10) {mm='0'+mm;}
-	var todayAsStr = mm+'/'+dd+'/'+yyyy;
-	return todayAsStr;
+	var dateAsStr = mm+'/'+dd+'/'+yyyy;
+	return dateAsStr;
+}
+function addDays(date, days) {
+	var result = new Date(date);
+    result.setDate(date.getDate() + days);
+    return result;
 }
 function isNumber(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
@@ -21,7 +26,8 @@ function properties(obj) {
 }
 
 
-exports.dateStamp = dateStamp;
+exports.dateAsStr = dateAsStr;
 exports.isNumber = isNumber;
 exports.properties = properties;
 exports.debug = debug;
+exports.addDays = addDays;

@@ -32,7 +32,7 @@ function saveCards(cards) {
 		var doc = {
 			index: nconf.get('elastic.index'),
 			type: nconf.get('elastic.type'),
-			id: c.id + c.reportDate,
+			id: c.id + c.reportDateAsStr,
 			body: c   
 		};
 		
@@ -54,7 +54,8 @@ function getCards(trello) {
 		fields[fields.length] = "name";
 	}
 	
-	var date = utils.dateStamp();
+	var currentDate = new Date();
+	var currentDateAsStr = utils.dateAsStr(currentDate);
 
 	// get all the cards for the board
 	return when.promise(function (resolve, reject) {
@@ -82,7 +83,8 @@ function getCards(trello) {
 					c.labels = c.labels.map(function(l) { return l.name; });
 				}
 				// Set the report date
-				c.reportDate = date;
+				c.reportDate = currentDate; 
+				c.reportDateAsStr = currentDateAsStr;
 				cards[cards.length] = c;
 			});
 		});
