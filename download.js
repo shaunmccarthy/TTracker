@@ -32,7 +32,7 @@ function saveCards(cards) {
 		var doc = {
 			index: nconf.get('elastic.index'),
 			type: nconf.get('elastic.type'),
-			id: c.id + c.reportDateAsStr,
+			id: c.id,
 			body: c   
 		};
 		
@@ -59,33 +59,33 @@ function getCards(trello) {
 
 	// get all the cards for the board
 	return when.promise(function (resolve, reject) {
-		trello.get("/1/boards/"+ nconf.get("board_id") + "/lists?cards=open&card_fields=" + fields.join(',') + "&labels=true", function(err, data) {
+		trello.get("/1/boards/"+ nconf.get("board_id") + "/lists?cards=open&actions_limit=1000&card_fields=" + fields.join(',') + "&labels=true", function(err, data) {
 			if (err) reject(err); else resolve(data);
 		});
 	})
-	.then(function(data) {
+	.then(function(lists) {
 		// Add some more detail to the card objects
 		// Namely - colors, estimates, and labels
-		data.map(function(l) {
-			var list = l.name;
-			var listID = l.id;
-			l.cards.map( function(c) {
+		lists.forEach(function(list) {
+			var listName = list.name;
+			var listID = list.id;
+			list.cards.forEach(function(card) {
 				// Set the estimate
-				c.estimate = getEstimate(c.name);
+				//c.estimate = getEstimate(c.name);
 			
 				// Set the list
-				c.listID = listID;
-				c.list = list;
+				card.listID = listID;
+				card.list = listName;
 			
 				// Parse the labels
-				if (c.labels !== undefined) {
-					c.colors = c.labels.map(function(l) { return l.color; });
-					c.labels = c.labels.map(function(l) { return l.name; });
+				if (card.labels !== undefined) {
+					card.colors = card.labels.map(function(label) { return label.color; });
+					card.labels = card.labels.map(function(label) { return label.name; });
 				}
 				// Set the report date
-				c.reportDate = currentDate; 
-				c.reportDateAsStr = currentDateAsStr;
-				cards[cards.length] = c;
+				card.reportDate = currentDate; 
+				card.reportDateAsStr = currentDateAsStr;
+				cards[cards.length] = card;
 			});
 		});
 		return cards;

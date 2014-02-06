@@ -5,8 +5,8 @@ function dateAsStr(date) {
 	var yyyy = date.getFullYear();
 	if (dd<10) {dd='0'+dd;}
 	if (mm<10) {mm='0'+mm;}
-	var dateAsStr = mm+'/'+dd+'/'+yyyy;
-	return dateAsStr;
+	var str = mm+'/'+dd+'/'+yyyy;
+	return str;
 }
 function addDays(date, days) {
 	var result = new Date(date);

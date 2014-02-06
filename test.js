@@ -10,6 +10,8 @@ var nconf = require('./config.js');
 var when = require('when');
 var delay = require('when/delay');
 var es = new ElasticSearch.Client();
+var CardRepository = require('./cardrepository.js');
+var cr = new CardRepository({index:nconf.get('test.elastic.index')});
 
 var statuses = ['To Do', 'Doing', 'Code Review', 'QA', 'Ready for Sign-off', 'Done', 'Future Sprints'];
 var scopes = ['Original Scope', 'Discovered', 'Optional', 'New Scope', 'Outside of Scope'];
@@ -96,14 +98,16 @@ function createScenario(status, scope, days, incr) {
 	var scenario = [];
 	scenario = scenario.concat(lastCards);
 	
+	var increaseEstaimte = function(card) {
+		if (status === undefined || status === card.status)
+			if (scope === undefined || scope === card.scope)
+				card.estimate += incr;
+	};
+	
 	for (var x = 0; x<days; x++) {
 		reportDate = u.addDays(reportDate, 1);
 		var newCards = newDay(lastCards, reportDate);
-		newCards.map(function (card) {
-			if (status === undefined || status === card.status)
-				if (scope === undefined || scope === card.scope)
-					card.estimate += incr;
-		});
+		newCards.map(increaseEstaimte);
 		scenario = scenario.concat(newCards);
 		lastCards = newCards;
 	}
@@ -113,28 +117,15 @@ function createScenario(status, scope, days, incr) {
 
 
 function createFirstScenario() {
-	return createScenario(undefined, undefined, 5, 1);
+	return createScenario(undefined, undefined, 2, 1);
 }
 
 function saveCards(cards) {
-	var promises = cards.map(function (c) {
-		var doc = {
-			index: nconf.get('test.elastic.index'),
-			type: nconf.get('test.elastic.type'),
-			id: c.id + c.reportDate,
-			body: c  
-		};
-		
-		return es.index(doc).then(function(res)	{
-			//console.log("Saved " + c.id);
-		});
-	});
-
-	return when.all(promises);
+	cr.saveCards(cards);
 }
 
 function trashTestIndex() {
-	return when(es.indices.delete({index: nconf.get('test.elastic.index')}))
+	return when(cr.drop())
 	.then(function (data) { console.log("Deleted index");})
 	.catch(function(err) { console.log("Test index not deleted due to " + err);});
 }
@@ -145,132 +136,30 @@ function dumpCards(data) {
 	return data;
 }
 
-function findCards() {
-	return es.search({
-		index: nconf.get('test.elastic.index'),
-		q:"*",
-		size:0
-	}).then(function (res) {
-		console.log(res.hits.total);
-	});
-}
-
 function dumpMapping() {
 	return when(es.indices.getMapping({
 		index: nconf.get('test.elastic.index'),
 		type: nconf.get('test.elastic.type'),
 	}))
-	.then(function(data) {console.log(data.card)});
-}
-
-function createMapping() {
-	// http://elasticsearch-users.115913.n3.nabble.com/Problem-Facets-tokenize-tags-with-spaces-Is-there-a-solution-td3651335.html
-	return when(es.indices.putMapping({
-		index: nconf.get('test.elastic.index'),
-		type: nconf.get('test.elastic.type'),
-		body: {
- 			"card": {
-				"properties": {
-					"list" : {
-						"type" : "string", 
-						"analyzer" : "string_lowercase"
-					},
-					"labels" : {
-						"type" : "string", 
-						"analyzer" : "string_lowercase"
-					}
-				}
-			},
-		}
-	
-	}))
-	.then(function(data) {console.log("Mapping Created.")});
+	.then(function(data) {console.log(data.card);});
 }
 
 function createTestIndex() {
-	return when(es.indices.create({
-		index: nconf.get('test.elastic.index'),
-		body: { 
-			"analysis": {
-				"analyzer": {
-	            	"string_lowercase": {
-	                	"tokenizer": "keyword",
-	                	"filter": "lowercase"
-	            	}
-	        	}
-			}
-		}
-	}))
-	.then(function(data) {console.log("Index Created.")});
+	return when(cr.create())
+	.then(function(data) {console.log("Index Created.");});
 }
 
 
 function resetTestIndex() {
-	return delay(
-			when(trashTestIndex())
-			.then(createTestIndex)
-			.then(createMapping)
-			.then(createFirstScenario)
-			//.then(dumpCards)
-			.then(saveCards)
-	,1000)
-	.then(findCards);
+	return ;
 }
 
-
-function totalByField(field, values) {
-	// The values need to be lower case
-	lower_values = values.map(function(s) {return s.toLowerCase();})
-	
-	// Create the facets we need
-	var facets = {};
-	
-	
-	// Create a histogram facet for each of the values we care about
-	lower_values.forEach(function(value, i) {
-		var facet_filter = {};
-		facet_filter[field] = value;
-		var facet = {
-			"date_histogram" : {
-				"key_field" : "reportDate",
-				"value_field" : "estimate",
-				"interval": "day"
-			},
-			"facet_filter" : {
-				"term" : facet_filter
-			}
-		};
-		facets["facet_" + i] = facet;
-	});
-
-	return es.search({
-		index: nconf.get('test.elastic.index'),
-			body: {
-				"query" : {
-				"match_all" : {  }
-			},
-			"facets" : facets
-		},
-		size:0
-	}).then(function(data) {
-		// Once we have the data back, convert it in to a better format
-		var result = [];
-		values.forEach(function(facet, i) {
-			var facet = data.facets["facet_" + i];
-			result[i] = { key : values[i] };
-			result[i].values = facet.entries.map(function(entry) {
-				return {time: entry.time, estimate: entry.total};
-			});
-		});
-		console.log(result);
-	});
-}
 
 function totalByStatus() {
-	return totalByField("list", statuses);
+	return cr.estimateByFieldValues("list", statuses);
 }
 function totalByScope() {
-	return totalByField("labels", scopes);
+	return cr.estimateByFieldValues("labels", scopes);
 }
 
 function dumpFirstCard() {
@@ -279,7 +168,7 @@ function dumpFirstCard() {
 		q: "+list:done", 
 		size:10000
 	}).then(function (res) {
-		if (res.hits.total != 0)
+		if (res.hits.total !== 0)
 			console.log(res.hits.hits[0]._source);
 		else 
 			console.log("No match");
@@ -287,15 +176,32 @@ function dumpFirstCard() {
 }
 
 
+function printTotals(totals) {
+	totals.forEach(function(total) {
+		console.log(total);
+	});
+}
+
 debug = false;
 if (debug) 
 {
-	console.log(statuses.map(function(s) {return s.toLowerCase();}));
+	when(cr.drop())
+	.then(cr.create)
+	.then(function (data) { setTimeout( process.exit,100);})
+	.catch(function(err) {console.log("Error: ".red + err); process.exit(); });
 }
 else {
-	when(resetTestIndex())
-	.then(dumpFirstCard)
+	delay(
+		when(cr.drop())
+		.then(cr.create)
+		.then(createFirstScenario)
+		.then(function(cards) { return cr.saveCards(cards); }),
+	1000)
+//	.then(dumpFirstCard)
 	.then(totalByScope)
+	.then(printTotals)
+	.then(totalByStatus)
+	.then(printTotals)
 	.then(function (data) { setTimeout( process.exit,100);})
 	.catch(function(err) {console.log("Error: ".red + err); process.exit(); });
 }
