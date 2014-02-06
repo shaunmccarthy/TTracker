@@ -11,7 +11,11 @@ var when = require('when');
 var delay = require('when/delay');
 var es = new ElasticSearch.Client();
 
+var statuses = ['To Do', 'Doing', 'Code Review', 'QA', 'Ready for Sign-off', 'Done', 'Future Sprints'];
+var scopes = ['Original Scope', 'Discovered', 'Optional', 'New Scope', 'Outside of Scope'];
+
 var nextCardID = 0;
+
 function createFakeCard(label, estimate, list, reportDate) {
 	estimate = estimate || 1;
 	label = label || '';
@@ -59,8 +63,6 @@ function copyCard(card, reportDate) {
 }
 
 function createFakeCards(date) {
-	var statuses = ['To Do', 'Doing', 'Code Review', 'QA', 'Ready for Sign-off', 'Done', 'Future Sprints'];
-	var scopes = ['Original Scope', 'Discovered', 'Optional', 'New Scope', 'Outside of Scope'];
 	var fakeCards = [];
 	date = date || new Date();
 	
@@ -172,6 +174,10 @@ function createMapping() {
 					"list" : {
 						"type" : "string", 
 						"analyzer" : "string_lowercase"
+					},
+					"labels" : {
+						"type" : "string", 
+						"analyzer" : "string_lowercase"
 					}
 				}
 			},
@@ -213,21 +219,30 @@ function resetTestIndex() {
 
 
 function totalByField(field, values) {
+	// The values need to be lower case
+	lower_values = values.map(function(s) {return s.toLowerCase();})
+	
 	// Create the facets we need
-	var facets = {
-		"estimates_by_status" : {
+	var facets = {};
+	
+	
+	// Create a histogram facet for each of the values we care about
+	lower_values.forEach(function(value, i) {
+		var facet_filter = {};
+		facet_filter[field] = value;
+		var facet = {
 			"date_histogram" : {
 				"key_field" : "reportDate",
 				"value_field" : "estimate",
 				"interval": "day"
 			},
 			"facet_filter" : {
-				"term" : { "list" : values[0] }
+				"term" : facet_filter
 			}
-			
-		}			
-	};
-	
+		};
+		facets["facet_" + i] = facet;
+	});
+
 	return es.search({
 		index: nconf.get('test.elastic.index'),
 			body: {
@@ -238,15 +253,24 @@ function totalByField(field, values) {
 		},
 		size:0
 	}).then(function(data) {
-		console.log(data.facets.estimates_by_status);
+		// Once we have the data back, convert it in to a better format
+		var result = [];
+		values.forEach(function(facet, i) {
+			var facet = data.facets["facet_" + i];
+			result[i] = { key : values[i] };
+			result[i].values = facet.entries.map(function(entry) {
+				return {time: entry.time, estimate: entry.total};
+			});
+		});
+		console.log(result);
 	});
 }
 
 function totalByStatus() {
-	return totalByField("list", ["to do"]);
+	return totalByField("list", statuses);
 }
 function totalByScope() {
-	return totalByField("labels", ["original scope"]);
+	return totalByField("labels", scopes);
 }
 
 function dumpFirstCard() {
@@ -262,23 +286,16 @@ function dumpFirstCard() {
 	});
 }
 
+
 debug = false;
 if (debug) 
 {
-	when(trashTestIndex())
-	.then(createTestIndex)
-	.then(createMapping)
-	.then(createFirstScenario)
-	.then(saveCards)
-	.then(dumpMapping)
-	.then(function (data) { setTimeout( process.exit,100);})
-	.catch(function(err) {console.log("Error: ".red + err); process.exit(); });
+	console.log(statuses.map(function(s) {return s.toLowerCase();}));
 }
 else {
 	when(resetTestIndex())
 	.then(dumpFirstCard)
-	.then(totalByStatus)
-	.then(dumpMapping)
+	.then(totalByScope)
 	.then(function (data) { setTimeout( process.exit,100);})
 	.catch(function(err) {console.log("Error: ".red + err); process.exit(); });
 }
