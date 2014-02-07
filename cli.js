@@ -46,4 +46,6 @@ else {
 	process.exit();
 }
 
-promise.catch(function(e){console.log("Error: " + e);});
+promise
+.then(process.exit)
+.catch(function(e){console.log("Error: " + e);});

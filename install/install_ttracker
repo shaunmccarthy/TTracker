@@ -1,0 +1,11 @@
+sudo apt-get install git
+sudo apt-get install nodejs
+sudo apt-get install npm
+mkdir ttracker
+cd git/
+git clone https://github.com/shaunmccarthy/TTracker.git
+cd TTracker/
+npm install
+sudo npm -g i grunt-cli
+sudo npm -g i supervisor
+sudo npm -g i prettyjson

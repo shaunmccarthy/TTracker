@@ -1,0 +1,6 @@
+sudo apt-get install openjdk-7-jre-headless
+curl -s https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-0.90.10.deb -o elasticsearch-0.90.10.deb
+sudo dpkg -i elasticsearch-0.90.10.deb 
+sudo /usr/share/elasticsearch/bin/plugin -install elasticsearch/elasticsearch-cloud-azure/1.0.0.alpha1
+sudo cp elasticsearch.yml /etc/elasticsearch/elasticsearch.yml 
+sudo service elasticsearch restart
