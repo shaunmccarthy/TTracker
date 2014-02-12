@@ -4,7 +4,7 @@
   "description": "A proof of concept for using Node, ElasticSearch and Trello together to report on project progress",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --reporter spec"
   },
   "repository": {
     "type": "git",
@@ -30,7 +30,8 @@
     "express": "~3.4.8",
     "when": "~2.7.1",
     "colors": "~0.6.2",
-    "xtend": "~2.1.2"
+    "xtend": "~2.1.2",
+    "should": "~3.1.2"
   },
   "devDependencies": {
     "grunt": "~0.4.2",

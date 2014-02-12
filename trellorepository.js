@@ -33,10 +33,10 @@ var TrelloRepository = function(options) {
 	var trello = new Trello(publicKey, token);
 
 	// Get an estimate from a title
-	var estimatePattern = /^\\(([0-9\\.]+)\\).*/;
+	var estimatePattern = /^\(([0-9\.]+)\).*/;
 	this.getEstimate = function getEstimate(title) {
 		var match = estimatePattern.exec(title);
-		if (match !== undefined && utils.isNumber(match[1])) {
+		if (match !== null && utils.isNumber(match[1])) {
 			return parseFloat(match[1]);
 		} else {
 			return undefined;
@@ -80,7 +80,7 @@ var TrelloRepository = function(options) {
 				
 				list.cards.forEach(function(card) {
 					// Set the estimate
-					//card.estimate = self.getEstimate(card.name);
+					card.estimate = self.getEstimate(card.name);
 				
 					// Set the list
 					card.listID = listID;
