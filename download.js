@@ -1,99 +1,18 @@
 // This file connects to trello and downloads all the details
 // from cards on the board and stores them in a file
 
-var utils = require('./utils.js');
-var Trello = require('node-trello');
-var ElasticSearch = require('elasticsearch');
 var nconf = require('./config.js');
 var when = require('when');
+var CardRepository = require('./cardrepository');
+var TrelloRepository = require('./trellorepository');
 
-var trello = new Trello(nconf.get('public_key'), nconf.get('token'));
-var es = new ElasticSearch.Client();
+var cr = new CardRepository();
+var tr = new TrelloRepository();
 
-// Returns the estimate for a card based on the title
-var estimatePattern = new RegExp("^\\(([0-9\\.]+)\\).*");
-function getEstimate(title) {
-	var match = estimatePattern.exec(title);
-	if (match !== undefined && utils.isNumber(match[1])) {
-		return parseFloat(match[1]);
-	} else {
-		return undefined;
-	}
-}
-
-function saveCards(cards) {
-	var toSave = cards.length;
-	console.log("Saving " + toSave + " cards");
-	
-	
-	// Now save the cards to elastic search
-	// TODO: Batch
-	var promises = cards.map(function (c) {
-		var doc = {
-			index: nconf.get('elastic.index'),
-			type: nconf.get('elastic.type'),
-			id: c.id,
-			body: c   
-		};
-		
-		return es.index(doc).then(function(res)	{
-			console.log("Saved " + c.id);
-		});
-	});
-
-	return when.all(promises);
-}
-
-function getCards(trello) {
-	var cards = [];
-	// Lowercase the config / trim it
-	var fields = nconf.get("fields").map(function (str) {return str.toLowerCase().trim(); });
-	
-	// Make sure name is in there, since we'll need it for estimates
-	if (fields.indexOf("name") === -1) {
-		fields[fields.length] = "name";
-	}
-	
-	var currentDate = new Date();
-	var currentDateAsStr = utils.dateAsStr(currentDate);
-
-	// get all the cards for the board
-	return when.promise(function (resolve, reject) {
-		trello.get("/1/boards/"+ nconf.get("board_id") + "/lists?cards=open&actions_limit=1000&card_fields=" + fields.join(',') + "&labels=true", function(err, data) {
-			if (err) reject(err); else resolve(data);
-		});
-	})
-	.then(function(lists) {
-		// Add some more detail to the card objects
-		// Namely - colors, estimates, and labels
-		lists.forEach(function(list) {
-			var listName = list.name;
-			var listID = list.id;
-			list.cards.forEach(function(card) {
-				// Set the estimate
-				//c.estimate = getEstimate(c.name);
-			
-				// Set the list
-				card.listID = listID;
-				card.list = listName;
-			
-				// Parse the labels
-				if (card.labels !== undefined) {
-					card.colors = card.labels.map(function(label) { return label.color; });
-					card.labels = card.labels.map(function(label) { return label.name; });
-				}
-				// Set the report date
-				card.reportDate = currentDate; 
-				card.reportDateAsStr = currentDateAsStr;
-				cards[cards.length] = card;
-			});
-		});
-		return cards;
-	});
-}
-
-console.log("Start");
-getCards(trello)
-.then(saveCards)
+console.log("Updating cards for " + tr.boardID);
+tr.getCards()
+.then(function(data) { console.log("Found " + data.length + " cards"); return data;})
+.then(function(data) { return cr.saveCards(data); })
+.then(function(data) { console.log("Saved " + data.length + " cards");})
 .then(process.exit)
 .catch(function(err) { console.log("Error: " + err);});

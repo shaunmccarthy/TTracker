@@ -10,11 +10,16 @@ var delay = require('when/delay');
 
 var CardRepository = function(options) {
 	
+	// Ensure new
+	if (!(this instanceof CardRepository))
+		return new CardRepository();
+	
 	var self = this;
 
 	var defaults = {
 		index: nconf.get('elastic.index'),
 		type: nconf.get('elastic.type'),
+		debug: nconf.get('debug.cardrepository') || false,
 		delay: 0
 	};
 
@@ -24,6 +29,10 @@ var CardRepository = function(options) {
 	this.index = options.index || defaults.index;
 	this.type = options.type || defaults.type;
 	this.delay = options.delay || defaults.delay; // delay between writes and reads
+	this.debug = options.debug || defaults.debug;
+	
+	// used to cache data from searches
+	this.cache = {};
 	
 	// Private fields
 	es = new ElasticSearch.Client();
@@ -73,13 +82,12 @@ var CardRepository = function(options) {
 		});
 	};
 	
-	this.drop = function() {
+	this.drop = function(index) {
+		index = index || self.index;
+		
 		return when(es.indices.delete({
-			index: self.index
+			index: index
 		})).then(function (data) {
-			return self;
-		}).catch(function (err) {
-			console.log("Did not delete " + self.index + " due to " + err);
 			return self;
 		});
 	};
@@ -146,7 +154,7 @@ var CardRepository = function(options) {
 		});
 
 		return es.search({
-			index: nconf.get('test.elastic.index'),
+			index: self.index,
 				body: {
 					"query" : {
 					"match_all" : {  }
@@ -171,13 +179,17 @@ var CardRepository = function(options) {
 	
 	this.saveCard = function(card) {
 		var doc = {
-			index: nconf.get('test.elastic.index'),
-			type: nconf.get('test.elastic.type'),
+			index: self.index,
+			type: self.type,
 			id: card.id,
 			body: card  
 		};
 		
-		return es.index(doc);
+		var promise = es.index(doc);
+		if (self.debug)
+			promise = promise.then(function(data) {console.log(data);});
+		
+		return promise;
 	};
 
 	this.saveCards = function(cards) {
@@ -187,8 +199,10 @@ var CardRepository = function(options) {
 		return when.all(promises);
 	};
 	
+	this.getIndices = function() {
+		return es.indices.getAliases({});
+	};
+	
 };
-
-x = new CardRepository();
 
 module.exports = CardRepository;
