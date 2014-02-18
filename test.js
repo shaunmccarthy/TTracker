@@ -153,10 +153,13 @@ function setup() {
 }
 
 
-debug = false;
+debug = true;
 if (debug) 
 {
-	when(cr.getStatusIDs())
+	when(populateValidStatuses)
+	.then(populateValidScopes)
+	.then(totalByScope)
+	.then(printTotals)
 	.then(process.exit)
 	.catch(function(err) {console.log("Error: ".red + err); process.exit(); });
 }

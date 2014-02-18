@@ -79,6 +79,9 @@ var CardRepository = function(options) {
 							},
 							"estimate" : {
 								"type" : "double"
+							},
+							"reportDate": {
+							    "type" : "date"
 							}
 						}
 					}
@@ -197,9 +200,9 @@ var CardRepository = function(options) {
 			var result = [];
 			values.forEach(function(facet, i) {
 				var stats = data.facets["facet_" + i];
-				result[i] = { key : (translate === undefined) ? values[i] : translate[values[i]] };
+				result[i] = { name: (translate === undefined) ? values[i] : translate[values[i]] };
 				result[i].values = stats.entries.map(function(entry) {
-					return {time: entry.time, estimate: entry.total};
+					return {date: entry.time, y: entry.total};
 				});
 			});
 			return result;

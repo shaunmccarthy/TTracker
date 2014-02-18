@@ -21,16 +21,13 @@ var margin = {top: 20, right: 20, bottom: 30, left: 50},
 	width = 960 - margin.left - margin.right,
 	height = 500 - margin.top - margin.bottom;
 
-var parseDate = d3.time.format("%y-%b-%d").parse,
-	formatPercent = d3.format(".0%");
-
 var x = d3.time.scale()
 	.range([0, width]);
 
 var y = d3.scale.linear()
 	.range([height, 0]);
 
-var color = d3.scale.category20();
+var color = d3.scale.category10();
 
 var xAxis = d3.svg.axis()
 	.scale(x)
@@ -38,8 +35,7 @@ var xAxis = d3.svg.axis()
 
 var yAxis = d3.svg.axis()
 	.scale(y)
-	.orient("left")
-	.tickFormat(formatPercent);
+	.orient("left");
 
 var area = d3.svg.area()
 	.x(function(d) { return x(d.date); })
@@ -57,49 +53,68 @@ var svg = d3.select("body").append("svg")
 
 	// Based on http://bl.ocks.org/mbostock/raw/3885211/
 //d3.json('/trello/test_index/status', function(error, data) {
-d3.tsv('data.tsv', function(error, data) {
-	color.domain(d3.keys(data[0]).filter(function(key) { return key !== "date"; }));
 
-	data.forEach(function(d) {
-		d.date = parseDate(d.date);
+d3.json('/trello/test_index/scope', function(error, data) {
+	d3.tsv('data.tsv', function(error, olddata) {
+		
+		color.domain(data.map(function(series) {return series.key; }));
+
+		var minDate;
+		var maxDate;
+		var totals = {};
+
+		data.forEach(function(series) {
+			series.values.forEach(function (row) {
+				row.date = new Date(row.date);
+				if (minDate === undefined || row.date < minDate)
+					minDate = row.date;
+				if (maxDate === undefined || row.date > maxDate)
+					maxDate = row.date;
+				if (totals[row.date] === undefined) 
+					totals[row.date] = 0;
+				totals[row.date] += row.y;
+			});
+		});
+
+		var ranges = data.map(function (series) { 
+			var seriesRange = d3.extent(series.values, function (r) { 
+				return r.y;
+			});
+			return [seriesRange[0], seriesRange[1]];
+		});
+		console.log(ranges);
+		
+		var categories = stack(data);
+		x.domain(d3.extent(data[0].values, function(d) { return d.date; }));
+		y.domain(d3.extent(d3.keys(totals), function (k) { return totals[k]; }));
+	
+		console.log(d3.extent(data[0].values, function(d) { return d.y; }));
+		var browser = svg.selectAll(".browser")
+			.data(categories)
+			.enter().append("g")
+			.attr("class", "browser");
+	
+		browser.append("path")
+			.attr("class", "area")
+			.attr("d", function(d) { return area(d.values); })
+			.style("fill", function(d) { return color(d.name); });
+	
+		browser.append("text")
+			.datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
+			.attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.y0 + d.value.y / 2) + ")"; })
+			.attr("x", -6)
+			.attr("dy", ".35em")
+			.text(function(d) { return d.name; });
+	
+		svg.append("g")
+			.attr("class", "x axis")
+			.attr("transform", "translate(0," + height + ")")
+			.call(xAxis);
+	
+		svg.append("g")
+			.attr("class", "y axis")
+			.call(yAxis);
 	});
-
-	var browsers = stack(color.domain().map(function(name) {
-		return {
-			name: name,
-			values: data.map(function(d) {
-				return {date: d.date, y: d[name] / 100};
-			})
-		};
-	}));
-
-	x.domain(d3.extent(data, function(d) { return d.date; }));
-
-	var browser = svg.selectAll(".browser")
-	.data(browsers)
-	.enter().append("g")
-		.attr("class", "browser");
-
-	browser.append("path")
-		.attr("class", "area")
-		.attr("d", function(d) { return area(d.values); })
-		.style("fill", function(d) { return color(d.name); });
-
-	browser.append("text")
-		.datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
-		.attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.y0 + d.value.y / 2) + ")"; })
-		.attr("x", -6)
-		.attr("dy", ".35em")
-		.text(function(d) { return d.name; });
-
-	svg.append("g")
-		.attr("class", "x axis")
-		.attr("transform", "translate(0," + height + ")")
-		.call(xAxis);
-
-	svg.append("g")
-		.attr("class", "y axis")
-		.call(yAxis);
 });
 
 </script>
