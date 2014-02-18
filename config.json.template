@@ -1,14 +1,14 @@
 // REMOVE ALL COMMENTS BEFORE RENAMING TO CONFIG.JSON
 {
-	"trello.public_key" : "", // https://trello.com/1/appKey/generate 
-	"trello.private_key" : "", // https://trello.com/1/appKey/generate
-	"trello.token" : "", // https://trello.com/1/connect?key=<public_key>&name=<app_name>&response_type=token
-	"trello.board_id" : "", // node cli.js --listBoards 
-	"trello.app_name" : "", // Name of app
-	"elastic.index": "", // Name of index to save cards in to
-	"elastic.type": "card",
-	"test.elastic.index": "test_index",
-	"test.elastic.type": "card",
-	"test.trello.board_id": "",
-	"debug.cardrepository": false
+	"trello_publicKey" : "", // https://trello.com/1/appKey/generate 
+	"trello_privateKey" : "", // https://trello.com/1/appKey/generate
+	"trello_token" : "", // https://trello.com/1/connect?key=<public_key>&name=<app_name>&response_type=token
+	"trello_boardID" : "", // node cli.js --listBoards 
+	"trello_app_name" : "", // Name of app
+	"elastic_index": "", // Name of index to save cards in to
+	"elastic_type": "card",
+	"test_elastic_index": "test_index",
+	"test_elastic_type": "card",
+	"test_trello_boardID": "",
+	"debug_cardrepository": false
 }

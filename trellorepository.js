@@ -14,11 +14,11 @@ var TrelloRepository = function(options) {
 	var self = this;
 
 	var defaults = {
-		publicKey: nconf.get('trello.public_key'),
-		token: nconf.get('trello.token'),
-		boardID: nconf.get('trello.board_id'),
-		fields: nconf.get('trello.fields'),
-		debug: nconf.get('debug.trello') || false
+		publicKey: nconf.get('trello_publicKey'),
+		token: nconf.get('trello_token'),
+		boardID: nconf.get('trello_boardID'),
+		fields: nconf.get('trello_fields'),
+		debug: nconf.get('debug_trello') || false
 	};
 
 	options = options || {};
@@ -51,7 +51,7 @@ var TrelloRepository = function(options) {
 		options = options || {};
 		
 		var cards = [];
-		var cardFields = (self.fields || nconf.get("fields")).map(function (str) {return str.toLowerCase().trim(); });
+		var cardFields = (self.fields || nconf.get("trello_fields")).map(function (str) {return str.toLowerCase().trim(); });
 		
 		// Make sure name is in there, since we'll need it for estimates
 		if (cardFields.indexOf("name") === -1) {

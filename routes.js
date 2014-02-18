@@ -1,7 +1,6 @@
 var express = require('express');
 
 var u = require('./utils.js');
-var nconf = require('./config.js');
 var when = require('when');
 var RepositoryCache = require('./repositorycache.js');
 var cache = new RepositoryCache();

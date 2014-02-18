@@ -3,7 +3,7 @@ var express = require('express');
 var routes = require('./routes');
 var nconf = require('./config.js');
 
-var port = nconf.get('server.port');
+var port = nconf.get('server_port');
 
 var server = express();
 

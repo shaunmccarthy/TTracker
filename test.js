@@ -11,9 +11,9 @@ var when = require('when');
 var delay = require('when/delay');
 var es = new ElasticSearch.Client();
 var CardRepository = require('./cardrepository.js');
-var cr = new CardRepository({index:nconf.get('test.elastic.index')});
+var cr = new CardRepository({index:nconf.get('test_elastic_index')});
 var TrelloRepository = require('./trellorepository.js');
-var tr = new TrelloRepository({boardID: nconf.get('test.trello.board_id')});
+var tr = new TrelloRepository({boardID: nconf.get('test_trello_boardID')});
 
 var statuses = [];
 var scopes = [];

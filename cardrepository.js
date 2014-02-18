@@ -18,9 +18,9 @@ var CardRepository = function(options) {
 	var self = this;
 
 	var defaults = {
-		index: nconf.get('elastic.index'),
-		type: nconf.get('elastic.type'),
-		debug: nconf.get('debug.cardrepository') || false,
+		index: nconf.get('elastic_index'),
+		type: nconf.get('elastic_type'),
+		debug: nconf.get('debug_cardrepository') || false,
 		delay: 0
 	};
 

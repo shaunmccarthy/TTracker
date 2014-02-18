@@ -14,8 +14,8 @@ var RepositoryCache = function(options) {
 	this.cardRepositoryCache = {};
 	this.trelloRepositoryCache = {};
 	this.trelloMap = {
-		creditsights: nconf.get('trello.board_id'),
-		test_index: nconf.get('test.trello.board_id')
+		creditsights: nconf.get('trello_boardID'),
+		test_index: nconf.get('test_trello_boardID')
 	};
 
 	this.getCardRepository = function(repository) {
