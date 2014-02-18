@@ -3,7 +3,7 @@ var should = require('should');
 var tr = new TrelloRepository();
 
 
-describe('Trello Repository', function() {
+describe('Unit Tests - Trello Repository', function() {
 	it ("should handle no estimate in the input", function() {
 		var output = tr.getEstimate("No Estimate here");
 		should.not.exist(output);

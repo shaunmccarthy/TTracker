@@ -7,6 +7,7 @@ var ElasticSearch = require('elasticsearch');
 var nconf = require("./config.js");
 var when = require('when');
 var delay = require('when/delay');
+var u = require('./utils.js');
 
 var CardRepository = function(options) {
 	
@@ -46,7 +47,8 @@ var CardRepository = function(options) {
 		});
 	};
 	
-	this.create = function() {
+	this.create = function(raise) {
+		raise = (raise !== undefined) ? raise : true;
 		return when(es.indices.create({
 			index: self.index,
 			body: { 
@@ -74,11 +76,19 @@ var CardRepository = function(options) {
 							"labels" : {
 								"type" : "string", 
 								"analyzer" : "string_lowercase"
+							},
+							"estimate" : {
+								"type" : "double"
 							}
 						}
 					}
 				}
 			});
+		})
+		.catch(function (err) {
+			if (raise) throw err;
+			if (err.message === undefined) throw err;
+			if (err.message.indexOf("IndexAlreadyExistsException") === -1 ) throw err;
 		});
 	};
 	
@@ -95,10 +105,10 @@ var CardRepository = function(options) {
 	this.queries = {};
 	
 	this.queries.byStatus = function(status) {
-		return "+list:" + status.replace(" ", "\\ ");
+		return "+list:" + status.replace(/ /g, "\\ ");
 	};
 	this.queries.byScope = function(scope) {
-		return "+labels:" + scope.replace(" ", "\\ ");
+		return "+labels:" + scope.replace(/ /g, "\\ ");
 	};
 	
 	this.count = function(query) {
@@ -128,7 +138,27 @@ var CardRepository = function(options) {
 		});
 	};
 	
-	this.estimateByFieldValues = function(field, values) {
+	this.dumpFirst = function dumpFirstCard(query) {
+		return self.first(query)
+			.then(function (res) {
+				if (res === undefined)
+					console.log("No Matches");
+				else
+					console.log(res);
+			});
+	};
+	
+	this.dumpMapping = function(index, type) {
+		console.log(index);
+		console.log(type);
+		return when(es.indices.getMapping({
+			index: index || self.index,
+			type: type || self.type,
+		}))
+		.then(function(data) {console.log(data[type || self.type]);});
+	};
+	
+	this.estimateByFieldValues = function(field, values, translate) {
 
 		// The values need to be lower case
 		lower_values = values.map(function(s) {return s.toLowerCase();});
@@ -167,8 +197,8 @@ var CardRepository = function(options) {
 			var result = [];
 			values.forEach(function(facet, i) {
 				var stats = data.facets["facet_" + i];
-				result[i] = { key : values[i] };
-				result[i].values = facet.entries.map(function(entry) {
+				result[i] = { key : (translate === undefined) ? values[i] : translate[values[i]] };
+				result[i].values = stats.entries.map(function(entry) {
 					return {time: entry.time, estimate: entry.total};
 				});
 			});
@@ -178,10 +208,13 @@ var CardRepository = function(options) {
 	
 	
 	this.saveCard = function(card) {
+		card.reportDate = card.reportDate || new Date();
+		card.reportDateAsStr = u.dateAsStr(card.reportDate);
+			
 		var doc = {
 			index: self.index,
 			type: self.type,
-			id: card.id,
+			id: card.id + "-" + card.reportDateAsStr.replace(/\//g,"."),
 			body: card  
 		};
 		
@@ -197,6 +230,35 @@ var CardRepository = function(options) {
 			return self.saveCard(c);
 		});
 		return when.all(promises);
+	};
+	
+	this.getValuesForField = function(field) {
+		return es.search({
+			index: self.index,
+				body: {
+					"query" : {	"match_all" : {  }	},
+					"facets" : {
+						"tags" : { "terms" : {"field" : field }}
+					}
+			},
+			size:0
+		}).then(function(data) {
+			// Once we have the data back, convert it in to a better format
+			var tags = data.facets.tags;
+			tags.map(function(entry) {
+				console.log(entry);
+				return entry;
+			});
+			return tags;
+		});			
+	};
+	
+	this.getScopeIDs = function() {
+		return self.getValuesForField("colors");
+	};
+	
+	this.getStatusIDs = function() {
+		return self.getValuesForField("listID");
 	};
 	
 	this.getIndices = function() {

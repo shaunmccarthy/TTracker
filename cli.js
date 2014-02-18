@@ -16,7 +16,7 @@ function printIndexList() {
 	});
 }
 
-function getBoardList(callback) {
+function getBoardList() {
 	return tr.getBoards()
 		.then(function (data) {
 			console.log("Boards:");
@@ -31,18 +31,33 @@ if (nconf.get('listBoards')) {
 else if (nconf.get('listIndices')) {
 	promise = when(printIndexList());
 }
+else if (nconf.get('dumpFirst')) {
+	// check to see if we were passed in a parameter
+	if (nconf.get('dumpFirst') === true) 
+		promise = when(cr.dumpFirst());
+	else 
+		promise = when(cr.dumpFirst(nconf.get('dumpFirst')));
+}
+else if (nconf.get('dumpMapping')) {
+	// check to see if we were passed in a parameter
+	promise = when(cr.dumpMapping(nconf.get('index'), nconf.get('mapping')));
+}
 else if (nconf.get('deleteIndex') !== undefined) {
-	promise = when(cr.drop(nconf.get('deleteIndex'))).then(function(data) {console.log("Deleted index " + nconf.get('deleteIndex'));});
+	promise = when(cr.drop(nconf.get('index'))).then(function(data) {console.log("Deleted index " + nconf.get('deleteIndex'));});
 }
 else {
-	console.log("Unrecognized action.\n\nValid actions:\n\tlistIndices\n\tdeleteIndex\n\tlistBoards");
+	console.log("Unrecognized action.\n\n" + 
+			"Valid actions:\n" +
+			"\tlistIndices\n" +
+			"\tdeleteIndex\n" +
+			"\tlistBoards\n" +
+			"\tlistScopes\n" +
+			"\tlistStatuses\n" +
+			"\tdumpFirst\n" +
+			"\tdumpMapping\n");
 	process.exit();
 }
 
-<<<<<<< HEAD
 promise
-.then(process.exit)
-.catch(function(e){console.log("Error: " + e);});
-=======
-promise.then(process.exit).catch(function(e){console.log("Error: " + e); process.exit();});
->>>>>>> Moved everything in to classes
+.catch(function(e){console.log("Error: " + e);})
+.then(process.exit);
