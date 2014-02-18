@@ -1,6 +1,9 @@
 //var routes = require("routes.js");
 var express = require('express');
 var routes = require('./routes');
+var nconf = require('./config.js');
+
+var port = nconf.get('server.port');
 
 var server = express();
 
@@ -11,4 +14,5 @@ var server = express();
 
 routes.configureRoutes(server);
 
-server.listen(process.env.PORT);
+server.listen(port);
+console.log("Listening at http://localhost:" + port);
